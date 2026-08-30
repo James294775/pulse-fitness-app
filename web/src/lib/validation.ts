@@ -37,6 +37,32 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
+export const activityPrivacyValues = ["everyone", "followers", "only_me"] as const;
+
+export const manualActivitySchema = z.object({
+  sportType: z.enum(sportTypes),
+  title: z.string().trim().min(1, "Give it a title").max(140),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  privacy: z.enum(activityPrivacyValues),
+  startedAt: z.string().min(1, "Pick a date and time"),
+  // distance/duration collected in the athlete's preferred units on the form, converted before this schema sees them
+  distanceM: z.coerce.number().positive("Distance must be greater than 0"),
+  movingTimeSec: z.coerce.number().positive("Duration must be greater than 0"),
+  elevationGainM: z.coerce.number().min(0).default(0),
+});
+
+export const uploadActivitySchema = z.object({
+  sportType: z.enum(sportTypes),
+  title: z.string().trim().min(1, "Give it a title").max(140),
+  privacy: z.enum(activityPrivacyValues),
+});
+
+export const editActivitySchema = z.object({
+  title: z.string().trim().min(1, "Give it a title").max(140),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  privacy: z.enum(activityPrivacyValues),
+});
+
 export const profileSchema = z.object({
   displayName: z.string().trim().min(1, "Enter your name").max(80),
   bio: z.string().trim().max(500).optional().or(z.literal("")),

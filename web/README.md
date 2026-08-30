@@ -2,11 +2,11 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 1 of 8 (Foundation).** Auth, profile, theming, and app shell/navigation work; everything else is a "coming in Phase N" stub. See `../PLAN.md` for the phase list.
+**Status: Phase 2 of 8 (Activity recording & detail).** Auth, profile, theming, app shell, live GPS recording, manual entry, GPX/TCX upload, and the activity detail page (map, stats, elevation/pace charts, splits, photos) all work. The home screen is a placeholder list of your own activities — the real social feed lands in Phase 3. See `../PLAN.md` for the phase list.
 
 ## Stack
 
-Next.js (App Router) + TypeScript + Tailwind CSS v4, Prisma + SQLite (dev), hand-rolled email/password auth with DB-backed sessions.
+Next.js (App Router) + TypeScript + Tailwind CSS v4, Prisma + SQLite (dev), hand-rolled email/password auth with DB-backed sessions, MapLibre GL (OpenFreeMap tiles) for maps, Recharts for elevation/pace charts.
 
 ## Setup
 
@@ -22,12 +22,16 @@ Then visit `http://localhost:3000`. Log in as any seeded user (see below) — th
 
 ## Seeded demo accounts
 
-Password for all of them: `password123`
+Password for all of them: `password123`. Each has ~3 months of seeded activity history (~450 activities across all 8 users) so the app never looks empty.
 
-- `mara@example.com`
-- `deni@example.com`
-- `theo@example.com`
-- `jonas@example.com`
+- `mara@example.com` — run
+- `deni@example.com` — ride
+- `theo@example.com` — run (imperial units)
+- `jonas@example.com` — run
+- `priya@example.com` — trail run
+- `sana@example.com` — run
+- `marcus@example.com` — ride (imperial units)
+- `ingrid@example.com` — ski
 
 ## Environment variables
 
