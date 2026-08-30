@@ -2,7 +2,7 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 5 of 8 (Routes).** Everything from Phase 4, plus: a click-to-add-waypoint route builder on the map, save/name/star/delete, a saved-routes list, and GPX export. Hand-drawn routes report 0m elevation gain (no elevation API wired up — see `../DECISIONS.md`); routes saved from a real tracked activity's points do have real elevation. See `../PLAN.md` for the phase list.
+**Status: Phase 6 of 8 (Training dashboard).** Everything from Phase 5, plus: weekly/monthly totals per sport with prior-period comparison, a 13-week training-log calendar (shaded relative to each athlete's own training volume), a real CTL/ATL/TSB fitness-and-form chart, personal records (race distances + longest ride/biggest climb), and recurring weekly/monthly goals with progress bars. See `../PLAN.md` for the phase list.
 
 ## Stack
 

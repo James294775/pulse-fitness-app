@@ -403,6 +403,35 @@ async function seedRoutes(users: { id: string }[]) {
   return count;
 }
 
+/** A weekly all-sports distance goal for each user, roughly 20% above their actual recent weekly average — ambitious but not absurd, so the dashboard's progress bar looks real. */
+async function seedGoals(users: { id: string }[]) {
+  if ((await db.goal.count()) > 0) return 0;
+
+  let count = 0;
+  for (const user of users) {
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    const recent = await db.activity.aggregate({
+      where: { userId: user.id, startedAt: { gte: fourWeeksAgo } },
+      _sum: { distanceM: true },
+    });
+    const weeklyAvgM = (recent._sum.distanceM ?? 0) / 4;
+    if (weeklyAvgM < 500) continue;
+
+    await db.goal.create({
+      data: {
+        userId: user.id,
+        period: "weekly",
+        metric: "distance",
+        targetValue: Math.round(weeklyAvgM * 1.2),
+        startDate: new Date(new Date().getFullYear(), 0, 1),
+      },
+    });
+    count++;
+  }
+  return count;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let totalActivities = 0;
@@ -437,11 +466,12 @@ async function main() {
 
   const segmentCount = await seedSegments();
   const routeCount = await seedRoutes(createdUsers);
+  const goalCount = await seedGoals(createdUsers);
 
   console.log(
     `Seeded ${demoUsers.length} demo users with ${totalActivities} activities${
       segmentCount ? `, ${segmentCount} segments` : ""
-    }${routeCount ? `, ${routeCount} routes` : ""}. Password for all: ${DEMO_PASSWORD}`
+    }${routeCount ? `, ${routeCount} routes` : ""}${goalCount ? `, ${goalCount} goals` : ""}. Password for all: ${DEMO_PASSWORD}`
   );
 }
 

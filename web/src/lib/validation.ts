@@ -63,6 +63,13 @@ export const editActivitySchema = z.object({
   privacy: z.enum(activityPrivacyValues),
 });
 
+export const createGoalSchema = z.object({
+  sportType: z.union([z.enum(sportTypes), z.literal("")]).optional(),
+  period: z.enum(["weekly", "monthly"]),
+  metric: z.enum(["distance", "time"]),
+  targetValue: z.coerce.number().positive("Target must be greater than 0"),
+});
+
 export const createSegmentSchema = z.object({
   activityId: z.string().min(1),
   name: z.string().trim().min(1, "Name this segment").max(120),
