@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/*
+ * Pulse brand tokens.
+ * Raw values live here as plain CSS custom properties, swapped per theme by
+ * [data-theme]. `@theme inline` re-exports them as Tailwind utilities
+ * (bg-surface, text-secondary, border-default, ...) so components never
+ * reference a hex value directly.
+ */
+
+:root,
+[data-theme="dark"] {
+  --pulse-bg: #0a0a0a;
+  --pulse-surface: #141414;
+  --pulse-surface-2: #101012;
+  --pulse-text: #ffffff;
+  --pulse-text-secondary: #6b6b6b;
+  --pulse-text-tertiary: #e4e4e4;
+  --pulse-border-weak: rgba(228, 228, 228, 0.08);
+  --pulse-border: rgba(228, 228, 228, 0.1);
+  --pulse-border-strong: rgba(228, 228, 228, 0.14);
+  --pulse-blue: #0066ff;
+  --pulse-blue-bright: #3d8bff;
+  --pulse-blue-wash: rgba(0, 102, 255, 0.1);
+  --pulse-accent-ink: #0a0a0a;
+  --pulse-scrim: rgba(10, 10, 10, 0.88);
+}
+
+[data-theme="light"] {
+  --pulse-bg: #efeff0;
+  --pulse-surface: #ffffff;
+  --pulse-surface-2: #f0f0f2;
+  --pulse-text: #141414;
+  --pulse-text-secondary: #6b6b6b;
+  --pulse-text-tertiary: #3d3d3d;
+  --pulse-border-weak: rgba(10, 10, 10, 0.136);
+  --pulse-border: rgba(10, 10, 10, 0.165);
+  --pulse-border-strong: rgba(10, 10, 10, 0.194);
+  --pulse-blue: #0066ff;
+  --pulse-blue-bright: #3d8bff;
+  --pulse-blue-wash: rgba(0, 102, 255, 0.08);
+  --pulse-accent-ink: #0a0a0a;
+  --pulse-scrim: rgba(255, 255, 255, 0.9);
+}
+
+@theme inline {
+  --font-sans: var(--font-sans-family);
+
+  --color-bg: var(--pulse-bg);
+  --color-surface: var(--pulse-surface);
+  --color-surface-2: var(--pulse-surface-2);
+  --color-text: var(--pulse-text);
+  --color-secondary: var(--pulse-text-secondary);
+  --color-tertiary: var(--pulse-text-tertiary);
+  --color-border-weak: var(--pulse-border-weak);
+  --color-border: var(--pulse-border);
+  --color-border-strong: var(--pulse-border-strong);
+  --color-accent: var(--pulse-blue);
+  --color-accent-bright: var(--pulse-blue-bright);
+  --color-accent-wash: var(--pulse-blue-wash);
+  --color-accent-ink: var(--pulse-accent-ink);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--pulse-bg);
+  color: var(--pulse-text);
+  font-family: var(--font-sans-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

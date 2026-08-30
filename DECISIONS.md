@@ -1,0 +1,21 @@
+# Decisions log
+
+Judgment calls made while building, per phase, so they're visible rather than buried in code.
+
+## Phase 1 — Foundation
+
+- **Prisma 7, not 5/6.** `npm view prisma dist-tags` showed `latest` pointing at `8.0.0-rc.12`, an unreleased major. Pinned to `7.10.0`, the last tagged stable (`prev`), rather than building on a release candidate.
+- **Driver adapter required.** Prisma 7 removed implicit URL-based connections — `PrismaClient` now requires an explicit driver adapter even for SQLite. Using `@prisma/adapter-better-sqlite3` + `better-sqlite3`. This also means the datasource URL used by the Prisma CLI (`prisma7.config.ts`, `file:./dev.db`) and the one read at runtime by the app (`src/lib/db.ts`, stripped of the `file:` prefix for the adapter) are two separate code paths reading the same env var — worth knowing if `DATABASE_URL` ever needs to change shape.
+- **Prisma config file is `prisma7.config.ts`**, not `prisma.config.ts` — that's what `prisma init` generated for this version and what the CLI looks for. Not a typo.
+- **Track points as a `Json` column on `Activity`/`Segment`/`Route`**, not a child table. Simplest thing that supports maps, charts, GPX export, and segment matching at prototype scale. A real-scale product would want a proper time-series table; flagged, not hidden.
+- **Auth is hand-rolled**, per the brief: bcrypt password hashing, opaque random session tokens (SHA-256'd before storing, so a DB read alone can't be replayed as a cookie), `httpOnly`/`sameSite=lax` cookie, `Session` table with expiry. No NextAuth/Clerk/etc.
+- **No `middleware`/`proxy.ts` gate.** Next.js 16 renamed `middleware.ts` to `proxy.ts` (still Node-runtime only, no edge). Rather than adopt a new, less-familiar API for a blanket auth gate, each protected page/Server Action calls `requireUserOrRedirect()` / `requireUser()` directly. More explicit per-route, easier to reason about which routes are actually protected when the API surface grows in later phases.
+- **Mutations are Server Actions, not `/api` routes**, for anything that's really a form submission (auth, profile). `/api/*` Route Handlers are reserved for phases 2+ where a client component needs to fetch/mutate JSON directly (live recording tick updates, kudos toggle, etc.) — both paths call the same `requireUser()`/Prisma calls underneath, so authorization isn't duplicated logic, just a different transport.
+- **Found and fixed during Phase 1 QA**: the initial `ProfileForm` (a Client Component) was given the full Prisma `User` object as a prop, including `passwordHash` (a bcrypt hash). Server Component → Client Component props are serialized into the page's RSC payload and shipped to the browser verbatim — so the hash was going out over the wire on every visit to `/settings/profile`, not just used in the UI. Fixed by introducing `PublicUser` (`Omit<User, "passwordHash">`) and a `toPublicUser()` helper in `src/lib/auth.ts`; every Server Component that hands a user into a "use client" component now passes `toPublicUser(user)`. Caught by an end-to-end smoke test (Playwright) that specifically greps the served HTML for `passwordHash`/bcrypt-hash patterns — kept as a standing regression check. **Rule going forward: the raw `User` type from `@/generated/prisma/client` never crosses into a Client Component prop — always `PublicUser`.**
+- **Header avatar → `/settings/profile` link** added to the header (not in the original five-screen design mockup, which had no settings entry point in its nav). Necessary so there's a way to reach account settings at all; noted here since it's a deviation from the visual reference.
+- **Seed script is users-only in Phase 1** (4 named demo users, shared password `password123`), matching the brief's phased build-up. Full ~8-user/3-month activity seed lands in Phase 2 once the `Activity` model has real write paths to generate realistic data through.
+- **Units toggle stores per-user metric/imperial preference**; every distance/time/pace/elevation display funnels through `src/lib/units.ts` rather than being computed inline anywhere — required so unit correctness (the brief's explicit quality bar) has one place to get right and test.
+
+## Later phases
+
+Appended here as they happen — see phase commits for the paired code changes.

@@ -1,0 +1,329 @@
+// Pulse — Prisma schema
+// SQLite for local dev; kept Postgres-compatible (real enums, no SQLite-only
+// features) so swapping `datasource.provider` + DATABASE_URL is the only
+// change needed later. See README.md "Deploying" section.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum SportType {
+  run
+  ride
+  walk
+  hike
+  swim
+  gym
+  gravel_ride
+  trail_run
+  row
+  ski
+}
+
+enum Units {
+  metric
+  imperial
+}
+
+enum ActivityPrivacy {
+  everyone
+  followers
+  only_me
+}
+
+enum ActivitySource {
+  live
+  manual
+  upload
+}
+
+enum GoalPeriod {
+  weekly
+  monthly
+}
+
+enum GoalMetric {
+  distance
+  time
+}
+
+enum ChallengeMetric {
+  distance
+  time
+  elevation
+}
+
+enum ClubRole {
+  owner
+  member
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  bio          String?
+  location     String?
+  primarySport SportType @default(run)
+  units        Units     @default(metric)
+  createdAt    DateTime  @default(now())
+
+  sessions          Session[]
+  activities        Activity[]
+  photos            Photo[]
+  kudos             Kudos[]
+  comments          Comment[]
+  followedBy        Follow[]        @relation("followingRelation")
+  following         Follow[]        @relation("followerRelation")
+  segmentsCreated   Segment[]
+  segmentEfforts    SegmentEffort[]
+  routes            Route[]
+  goals             Goal[]
+  clubsCreated      Club[]
+  clubMemberships   ClubMember[]
+  challengesCreated Challenge[]
+  challengeEntries  ChallengeParticipant[]
+  privacyZones      PrivacyZone[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Activity {
+  id               String           @id @default(cuid())
+  userId           String
+  sportType        SportType
+  title            String
+  description      String?
+  privacy          ActivityPrivacy  @default(everyone)
+  source           ActivitySource
+  startedAt        DateTime
+  elapsedTimeSec   Int
+  movingTimeSec    Int
+  distanceM        Float
+  elevationGainM   Float
+  avgPaceSecPerKm  Float?
+  avgSpeedKmh      Float?
+  calories         Int?
+  effortScore      Float
+  points           String // JSON: TrackPoint[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos          Photo[]
+  kudos           Kudos[]
+  comments        Comment[]
+  segmentEfforts  SegmentEffort[]
+  segmentsCreated Segment[]
+
+  @@index([userId, startedAt])
+}
+
+model Photo {
+  id         String @id @default(cuid())
+  activityId String
+  userId     String
+  url        String
+  caption    String?
+  sortOrder  Int     @default(0)
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("followerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Kudos {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@index([activityId])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  parentId   String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  activity Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("replies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies  Comment[] @relation("replies")
+
+  @@index([activityId])
+}
+
+model Segment {
+  id                String    @id @default(cuid())
+  name              String
+  sportType         SportType
+  createdByUserId   String
+  sourceActivityId  String?
+  points            String // JSON: TrackPoint[]
+  startLat          Float
+  startLng          Float
+  endLat            Float
+  endLng            Float
+  distanceM         Float
+  elevationGainM    Float
+  avgGrade          Float
+  createdAt         DateTime @default(now())
+
+  createdBy      User            @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  sourceActivity Activity?       @relation(fields: [sourceActivityId], references: [id], onDelete: SetNull)
+  efforts        SegmentEffort[]
+
+  @@index([startLat, startLng])
+}
+
+model SegmentEffort {
+  id         String   @id @default(cuid())
+  segmentId  String
+  activityId String
+  userId     String
+  elapsedSec Float
+  startedAt  DateTime
+  isPr       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  segment  Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([segmentId, elapsedSec])
+  @@index([userId, segmentId])
+}
+
+model Route {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  points         String // JSON: TrackPoint[]
+  distanceM      Float
+  elevationGainM Float
+  starred        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String
+  sportType   SportType?
+  period      GoalPeriod
+  metric      GoalMetric
+  targetValue Float
+  startDate   DateTime
+  createdAt   DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Club {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  sportType       SportType?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+
+  createdBy   User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members     ClubMember[]
+  challenges  Challenge[]
+}
+
+model ClubMember {
+  clubId   String
+  userId   String
+  role     ClubRole @default(member)
+  joinedAt DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([clubId, userId])
+}
+
+model Challenge {
+  id              String          @id @default(cuid())
+  clubId          String?
+  name            String
+  description     String?
+  metric          ChallengeMetric
+  targetValue     Float
+  startDate       DateTime
+  endDate         DateTime
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+
+  club         Club?                  @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  createdBy    User                   @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  challengeId String
+  userId      String
+  joinedAt    DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([challengeId, userId])
+}
+
+model PrivacyZone {
+  id      String @id @default(cuid())
+  userId  String
+  label   String
+  lat     Float
+  lng     Float
+  radiusM Float
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
