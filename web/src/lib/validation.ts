@@ -63,6 +63,13 @@ export const editActivitySchema = z.object({
   privacy: z.enum(activityPrivacyValues),
 });
 
+export const createPrivacyZoneSchema = z.object({
+  label: z.string().trim().min(1, "Give this zone a label").max(80),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  radiusM: z.coerce.number().positive("Radius must be greater than 0"),
+});
+
 export const createClubSchema = z.object({
   name: z.string().trim().min(1, "Name this club").max(120),
   description: z.string().trim().max(1000).optional().or(z.literal("")),

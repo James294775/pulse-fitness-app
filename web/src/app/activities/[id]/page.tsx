@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { canViewActivity } from "@/lib/social";
 import { computeSplits, downsample } from "@/lib/geo";
 import { parseTrack } from "@/lib/track";
+import { getViewableTrack } from "@/lib/privacy";
 import { buildCommentTree } from "@/lib/comments";
 import { sportLabels } from "@/lib/validation";
 import { AppShell } from "@/components/AppShell";
@@ -66,6 +67,12 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
 
   const units = user.units;
   const track = parseTrack(activity.points);
+  // Splits and the elevation-profile chart are distance-indexed numbers,
+  // not raw coordinates, and stay based on the full track (same principle
+  // as the aggregate stats already stored on the activity). Only the map
+  // itself — the thing that actually shows *where* — gets clipped for
+  // anyone who isn't the owner.
+  const mapTrack = await getViewableTrack(track, activity.userId, user.id);
   const unitMeters = units === "imperial" ? 1609.344 : 1000;
   const splits = computeSplits(track, unitMeters);
   const elevationPoints = downsample(track, 200).map((p) => ({ distanceM: p.distM, elevationM: p.ele }));
@@ -125,11 +132,11 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
           )}
         </div>
 
-        {track.length > 1 ? (
-          <ActivityMap points={track.map((p) => ({ lat: p.lat, lng: p.lng }))} className="h-[220px] rounded border border-border-weak" />
+        {mapTrack.length > 1 ? (
+          <ActivityMap points={mapTrack.map((p) => ({ lat: p.lat, lng: p.lng }))} className="h-[220px] rounded border border-border-weak" />
         ) : (
           <div className="flex h-[80px] items-center justify-center rounded border border-border-weak bg-surface text-xs text-secondary">
-            No GPS track — logged manually
+            {track.length > 1 ? "Route hidden near start/end" : "No GPS track — logged manually"}
           </div>
         )}
 

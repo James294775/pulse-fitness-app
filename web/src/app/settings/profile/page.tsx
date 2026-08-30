@@ -12,9 +12,14 @@ export default async function ProfileSettingsPage() {
     <AppShell withTabBar={false}>
       <BackHeader label="BACK" href="/" title="PROFILE" />
       <div className="flex flex-col gap-6 px-5 py-6">
-        <Link href={`/athletes/${user.id}`} className="text-[11px] font-semibold tracking-[0.1em] text-accent">
-          VIEW PUBLIC PROFILE →
-        </Link>
+        <div className="flex flex-col gap-2">
+          <Link href={`/athletes/${user.id}`} className="text-[11px] font-semibold tracking-[0.1em] text-accent">
+            VIEW PUBLIC PROFILE →
+          </Link>
+          <Link href="/settings/privacy" className="text-[11px] font-semibold tracking-[0.1em] text-accent">
+            PRIVACY ZONES →
+          </Link>
+        </div>
         <ProfileForm user={toPublicUser(user)} />
         <div className="border-t border-border pt-6">
           <LogOutButton />

@@ -2,7 +2,7 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 7 of 8 (Clubs & challenges).** Everything from Phase 6, plus: create/join clubs, a monthly club leaderboard scoped to the club's sport, and challenges (target metric, join button, live participant leaderboard) that inherit their club's sport scoping — see `../DECISIONS.md` for a real cross-sport leaderboard bug this closed. See `../PLAN.md` for the phase list.
+**Status: all 8 phases complete.** Everything from Phase 7, plus the privacy pass: per-activity visibility (everyone/followers/only me) audited across every read path, home/work "privacy zones" that trim a saved activity's map near its start/end for anyone but the owner (server-side, not just hidden in the UI — see `../DECISIONS.md`), `error.tsx`/`not-found.tsx` boundaries, and a Vitest suite covering the trickier logic (GPX/TCX parsing, segment matching, pace/elevation/unit math, privacy-zone clipping). See `../PLAN.md` for the phase list and `../DECISIONS.md` for the full log of judgment calls.
 
 ## Stack
 
@@ -43,9 +43,16 @@ Password for all of them: `password123`. Each has ~3 months of seeded activity h
 
 - `npm run dev` — dev server (Turbopack)
 - `npm run build` / `npm run start` — production build/serve
+- `npm run test` — unit tests (Vitest) for the tricky logic: GPX/TCX parsing, segment matching, pace/elevation/unit conversions, privacy-zone clipping. No UI/component tests, by design — see `../PLAN.md`.
+- `npm run lint` — ESLint
 - `npx prisma migrate dev --name <name>` — create + apply a migration after editing `prisma/schema.prisma`
 - `npx prisma db seed` — re-run the seed script (upserts, safe to re-run)
 - `npx prisma studio` — browse the local database
+
+## Privacy
+
+- **Per-activity visibility** — everyone / followers / only me — is enforced server-side (`src/lib/social.ts`'s `canViewActivity`) on every read path that returns activity data: the detail page, the feed query, athlete profiles, and segment-effort leaderboards.
+- **Privacy zones** (`/settings/privacy`) let an athlete mark a location (home, work) whose radius gets trimmed off the *start and end* of their activity maps for anyone but themselves — their own view is always the real, full track. This happens server-side, before the track ever reaches the page (`src/lib/privacy.ts`), so the coordinates near a zone genuinely never reach another user's browser — not just hidden by CSS/JS. See `../DECISIONS.md` (Phase 8) for the audit of every place raw coordinates reach a page, and for why segment thumbnails don't need separate clipping.
 
 ## Deploying
 

@@ -7,6 +7,7 @@ import { FeedCard, type FeedCardData } from "@/components/FeedCard";
 import { parseTrack } from "@/lib/track";
 import { downsample } from "@/lib/geo";
 import { trackToSvgPath } from "@/lib/route-thumbnail";
+import { clipTrackToZones, type Zone } from "@/lib/privacy";
 
 export default async function FeedPage() {
   const user = await requireUserOrRedirect();
@@ -33,8 +34,26 @@ export default async function FeedPage() {
     },
   });
 
+  // One query for every "other" athlete's privacy zones, rather than one
+  // per card — the feed can easily show 30 activities from a handful of
+  // distinct people.
+  const otherOwnerIds = [...new Set(activities.filter((a) => a.userId !== user.id).map((a) => a.userId))];
+  const zoneRows = otherOwnerIds.length
+    ? await db.privacyZone.findMany({
+        where: { userId: { in: otherOwnerIds } },
+        select: { userId: true, lat: true, lng: true, radiusM: true },
+      })
+    : [];
+  const zonesByOwner = new Map<string, Zone[]>();
+  for (const z of zoneRows) {
+    if (!zonesByOwner.has(z.userId)) zonesByOwner.set(z.userId, []);
+    zonesByOwner.get(z.userId)!.push(z);
+  }
+
   const cards: FeedCardData[] = activities.map((a) => {
-    const track = parseTrack(a.points);
+    const fullTrack = parseTrack(a.points);
+    const track =
+      a.userId === user.id ? fullTrack : clipTrackToZones(fullTrack, zonesByOwner.get(a.userId) ?? []);
     const thumbnailPoints = downsample(track, 40);
     return {
       id: a.id,
