@@ -63,6 +63,13 @@ export const editActivitySchema = z.object({
   privacy: z.enum(activityPrivacyValues),
 });
 
+export const createSegmentSchema = z.object({
+  activityId: z.string().min(1),
+  name: z.string().trim().min(1, "Name this segment").max(120),
+  startIndex: z.coerce.number().int().min(0),
+  endIndex: z.coerce.number().int().min(0),
+});
+
 export const commentSchema = z.object({
   activityId: z.string().min(1),
   parentId: z.string().optional().or(z.literal("")),

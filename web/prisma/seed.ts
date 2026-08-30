@@ -9,6 +9,8 @@
 import bcrypt from "bcryptjs";
 import { db } from "../src/lib/db";
 import { createActivityFromTrack, createManualActivity } from "../src/lib/activities";
+import { createSegmentFromActivity } from "../src/lib/segments";
+import { parseTrack } from "../src/lib/track";
 import type { RawPoint } from "../src/lib/track";
 import type { SportType, Units } from "../src/generated/prisma/client";
 
@@ -301,6 +303,72 @@ async function seedSocialGraph(users: { id: string }[]) {
   }
 }
 
+const SEGMENT_NAMES: Partial<Record<SportType, string>> = {
+  run: "Seawall Sprint",
+  trail_run: "Grouse Grind",
+  ride: "Cypress Bowl Lower Wall",
+  gravel_ride: "Backroads Straight",
+  hike: "Ridge Approach",
+  walk: "Waterfront Stretch",
+  ski: "Groomer Run",
+};
+
+// Real segment matching needs two activities to have actually covered the
+// same ground, which independently-randomized synthetic loops never do (see
+// synthesizeLoopTrack). So for seed data, segments are carved from one
+// user's real track via the normal creation path, and *effort* rows for
+// other users are fabricated directly against one of their own existing
+// activities — enough to populate a real-looking leaderboard without
+// pretending the matcher found something it couldn't have.
+async function seedSegments() {
+  if ((await db.segment.count()) > 0) return;
+
+  const tracked = await db.activity.findMany({ where: { NOT: { points: "[]" } } });
+  const bySport = new Map<SportType, typeof tracked>();
+  for (const a of tracked) {
+    if (!bySport.get(a.sportType)) bySport.set(a.sportType, []);
+    bySport.get(a.sportType)!.push(a);
+  }
+
+  let segmentCount = 0;
+  for (const [sportType, activities] of bySport) {
+    if (activities.length < 3) continue;
+    const source = activities[0];
+    const track = parseTrack(source.points);
+    if (track.length < 8) continue;
+
+    const segment = await createSegmentFromActivity({
+      activityId: source.id,
+      userId: source.userId,
+      name: SEGMENT_NAMES[sportType] ?? "Segment",
+      startIndex: Math.floor(track.length * 0.2),
+      endIndex: Math.floor(track.length * 0.65),
+    });
+    segmentCount++;
+
+    const paceSecPerKm = sportType === "ride" || sportType === "gravel_ride" || sportType === "ski" ? 140 : 300;
+    const baseSec = (segment.distanceM / 1000) * paceSecPerKm;
+
+    // source already got its founding effort from createSegmentFromActivity above
+    const others = activities.filter((a) => a.userId !== source.userId);
+    const participants = others.sort(() => Math.random() - 0.5).slice(0, 7);
+    for (const activity of participants) {
+      await db.segmentEffort.create({
+        data: {
+          segmentId: segment.id,
+          activityId: activity.id,
+          userId: activity.userId,
+          elapsedSec: Math.round(baseSec * rand(0.82, 1.35)),
+          startedAt: activity.startedAt,
+          isPr: true,
+        },
+      });
+    }
+  }
+
+  return segmentCount;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let totalActivities = 0;
@@ -333,7 +401,13 @@ async function main() {
     await seedSocialGraph(createdUsers);
   }
 
-  console.log(`Seeded ${demoUsers.length} demo users with ${totalActivities} activities. Password for all: ${DEMO_PASSWORD}`);
+  const segmentCount = await seedSegments();
+
+  console.log(
+    `Seeded ${demoUsers.length} demo users with ${totalActivities} activities${
+      segmentCount ? ` and ${segmentCount} segments` : ""
+    }. Password for all: ${DEMO_PASSWORD}`
+  );
 }
 
 main()

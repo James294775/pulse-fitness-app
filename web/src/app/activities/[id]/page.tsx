@@ -48,6 +48,22 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
 
   const commentTree = buildCommentTree(activity.comments);
 
+  const matchedEfforts = await db.segmentEffort.findMany({
+    where: { activityId: activity.id },
+    include: { segment: { select: { id: true, name: true, distanceM: true } } },
+  });
+  const segmentRows = await Promise.all(
+    matchedEfforts.map(async (effort) => {
+      const allEfforts = await db.segmentEffort.findMany({
+        where: { segmentId: effort.segmentId, userId: effort.userId },
+        orderBy: { elapsedSec: "asc" },
+        select: { id: true },
+      });
+      const rank = allEfforts.findIndex((e) => e.id === effort.id) + 1;
+      return { effort, rank };
+    })
+  );
+
   const units = user.units;
   const track = parseTrack(activity.points);
   const unitMeters = units === "imperial" ? 1609.344 : 1000;
@@ -90,12 +106,22 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">{activity.title}</h1>
           {activity.description && <p className="mt-2 text-sm text-tertiary">{activity.description}</p>}
           {isOwner && (
-            <Link
-              href={`/activities/${activity.id}/edit`}
-              className="mt-3 inline-block text-[11px] font-semibold tracking-[0.1em] text-accent"
-            >
-              EDIT
-            </Link>
+            <div className="mt-3 flex gap-4">
+              <Link
+                href={`/activities/${activity.id}/edit`}
+                className="text-[11px] font-semibold tracking-[0.1em] text-accent"
+              >
+                EDIT
+              </Link>
+              {track.length > 1 && (
+                <Link
+                  href={`/activities/${activity.id}/segment/new`}
+                  className="text-[11px] font-semibold tracking-[0.1em] text-accent"
+                >
+                  CREATE SEGMENT
+                </Link>
+              )}
+            </div>
           )}
         </div>
 
@@ -139,6 +165,37 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
           </>
         )}
 
+        {segmentRows.length > 0 && (
+          <Section title="SEGMENTS" meta={`${segmentRows.length} MATCHED`}>
+            <div className="flex flex-col gap-1 overflow-hidden rounded border border-border-weak">
+              {segmentRows.map(({ effort, rank }) => (
+                <Link
+                  key={effort.id}
+                  href={`/segments/${effort.segment.id}`}
+                  className="flex items-center gap-3 border-b border-border-weak bg-surface px-3.5 py-3 last:border-b-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{effort.segment.name}</div>
+                    <div className="mt-0.5 text-[10px] tracking-[0.1em] text-secondary">
+                      {formatDistance(effort.segment.distanceM, units)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="tabular text-[16px] font-semibold">{formatDuration(effort.elapsedSec)}</div>
+                    <div
+                      className={`mt-0.5 text-[10px] font-semibold tracking-[0.1em] ${
+                        rank === 1 ? "text-[var(--color-accent-bright)]" : "text-secondary"
+                      }`}
+                    >
+                      {rank === 1 ? "PR" : `${ordinal(rank)} BEST`}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Section>
+        )}
+
         <Section title="PHOTOS" meta={`${activity.photos.length}`}>
           {activity.photos.length > 0 && (
             <div className="mb-3 grid grid-cols-3 gap-1.5">
@@ -163,6 +220,12 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
       </div>
     </AppShell>
   );
+}
+
+function ordinal(n: number): string {
+  const suffixes = ["TH", "ST", "ND", "RD"];
+  const mod100 = n % 100;
+  return `${n}${suffixes[(mod100 - 20) % 10] ?? suffixes[mod100] ?? suffixes[0]}`;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

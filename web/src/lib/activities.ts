@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { buildTrack, computeTrackStats } from "@/lib/geo";
 import { computeEffortScore, estimateCalories } from "@/lib/effort";
+import { matchActivityAgainstSegments } from "@/lib/segments";
 import { serializeTrack, type RawPoint } from "@/lib/track";
 import type { ActivityPrivacy, ActivitySource, SportType } from "@/generated/prisma/client";
 
@@ -28,7 +29,7 @@ export async function createActivityFromTrack(input: CreateFromTrackInput) {
   });
   const calories = estimateCalories({ sportType: input.sportType, movingTimeSec: stats.movingTimeSec });
 
-  return db.activity.create({
+  const activity = await db.activity.create({
     data: {
       userId: input.userId,
       sportType: input.sportType,
@@ -48,6 +49,9 @@ export async function createActivityFromTrack(input: CreateFromTrackInput) {
       points: serializeTrack(track),
     },
   });
+
+  await matchActivityAgainstSegments(activity);
+  return activity;
 }
 
 interface CreateManualInput {
