@@ -2,7 +2,7 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 2 of 8 (Activity recording & detail).** Auth, profile, theming, app shell, live GPS recording, manual entry, GPX/TCX upload, and the activity detail page (map, stats, elevation/pace charts, splits, photos) all work. The home screen is a placeholder list of your own activities — the real social feed lands in Phase 3. See `../PLAN.md` for the phase list.
+**Status: Phase 3 of 8 (Feed & social).** Everything from Phase 2, plus: a real chronological feed (your own activities + everyone/followers-visible activities from people you follow), kudos, one-level threaded comments, follow/unfollow, follower/following lists, and athlete profile pages. See `../PLAN.md` for the phase list.
 
 ## Stack
 
@@ -22,7 +22,7 @@ Then visit `http://localhost:3000`. Log in as any seeded user (see below) — th
 
 ## Seeded demo accounts
 
-Password for all of them: `password123`. Each has ~3 months of seeded activity history (~450 activities across all 8 users) so the app never looks empty.
+Password for all of them: `password123`. Each has ~3 months of seeded activity history (~450 activities across all 8 users), and they all follow the next few users in the list below (wrapping around) with some kudos/comments seeded in, so the feed isn't empty on first login either.
 
 - `mara@example.com` — run
 - `deni@example.com` — ride

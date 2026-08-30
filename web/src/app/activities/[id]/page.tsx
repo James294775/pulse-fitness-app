@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUserOrRedirect } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { canViewActivity } from "@/lib/activities";
+import { canViewActivity } from "@/lib/social";
 import { computeSplits, downsample } from "@/lib/geo";
 import { parseTrack } from "@/lib/track";
+import { buildCommentTree } from "@/lib/comments";
 import { sportLabels } from "@/lib/validation";
 import { AppShell } from "@/components/AppShell";
 import { BackHeader } from "@/components/BackHeader";
@@ -12,6 +13,8 @@ import { ActivityMap } from "@/components/ActivityMap";
 import { ElevationProfileChart } from "@/components/ElevationProfileChart";
 import { PaceChart } from "@/components/PaceChart";
 import { SplitsTable } from "@/components/SplitsTable";
+import { KudosButton } from "@/components/KudosButton";
+import { CommentThread } from "@/components/CommentThread";
 import { PhotoUploadForm } from "./PhotoUploadForm";
 import {
   distanceUnitLabel,
@@ -29,10 +32,21 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
 
   const activity = await db.activity.findUnique({
     where: { id },
-    include: { user: true, photos: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      user: true,
+      photos: { orderBy: { sortOrder: "asc" } },
+      kudos: { where: { userId: user.id }, select: { id: true } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { user: { select: { id: true, displayName: true } } },
+      },
+      _count: { select: { kudos: true } },
+    },
   });
 
-  if (!activity || !canViewActivity(activity, user.id)) notFound();
+  if (!activity || !(await canViewActivity(activity, user.id))) notFound();
+
+  const commentTree = buildCommentTree(activity.comments);
 
   const units = user.units;
   const track = parseTrack(activity.points);
@@ -135,6 +149,16 @@ export default async function ActivityDetailPage({ params }: PageProps<"/activit
             </div>
           )}
           {isOwner && <PhotoUploadForm activityId={activity.id} />}
+        </Section>
+
+        <KudosButton
+          activityId={activity.id}
+          initialGiven={activity.kudos.length > 0}
+          initialCount={activity._count.kudos}
+        />
+
+        <Section title="COMMENTS" meta={`${activity.comments.length}`}>
+          <CommentThread comments={commentTree} activityId={activity.id} />
         </Section>
       </div>
     </AppShell>

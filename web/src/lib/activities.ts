@@ -2,18 +2,7 @@ import { db } from "@/lib/db";
 import { buildTrack, computeTrackStats } from "@/lib/geo";
 import { computeEffortScore, estimateCalories } from "@/lib/effort";
 import { serializeTrack, type RawPoint } from "@/lib/track";
-import type { Activity, ActivityPrivacy, ActivitySource, SportType } from "@/generated/prisma/client";
-
-/**
- * Visibility check. "followers" can't be resolved properly until the Follow
- * graph lands in Phase 3 — treated as owner-only until then, which is the
- * conservative (never-over-share) direction rather than the permissive one.
- * Revisited for real in Phase 8's privacy pass.
- */
-export function canViewActivity(activity: Pick<Activity, "userId" | "privacy">, viewerId: string): boolean {
-  if (activity.userId === viewerId) return true;
-  return activity.privacy === "everyone";
-}
+import type { ActivityPrivacy, ActivitySource, SportType } from "@/generated/prisma/client";
 
 interface CreateFromTrackInput {
   userId: string;

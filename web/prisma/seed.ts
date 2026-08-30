@@ -259,9 +259,52 @@ async function seedActivitiesForUser(user: { id: string; primarySport: SportType
   return activityDates.length;
 }
 
+const COMMENT_BODIES = [
+  "Nice work out there.",
+  "That pace is quick — nice negative split.",
+  "See you out there next time.",
+  "Solid effort on that climb.",
+  "Love this route.",
+];
+
+/** Everyone follows the next few people in the roster (wrapping around) — enough of a social graph that the feed, follower counts, and follow buttons all have real data on first load. */
+async function seedSocialGraph(users: { id: string }[]) {
+  for (let i = 0; i < users.length; i++) {
+    for (let offset = 1; offset <= 3; offset++) {
+      const target = users[(i + offset) % users.length];
+      if (target.id === users[i].id) continue;
+      await db.follow.create({ data: { followerId: users[i].id, followingId: target.id } }).catch(() => {});
+    }
+  }
+
+  for (const user of users) {
+    const recentActivities = await db.activity.findMany({
+      where: { userId: user.id },
+      orderBy: { startedAt: "desc" },
+      take: 3,
+    });
+    const followers = await db.follow.findMany({ where: { followingId: user.id }, select: { followerId: true } });
+
+    for (const activity of recentActivities) {
+      for (const f of followers) {
+        if (Math.random() < 0.6) {
+          await db.kudos.create({ data: { activityId: activity.id, userId: f.followerId } }).catch(() => {});
+        }
+      }
+      if (followers.length > 0 && Math.random() < 0.7) {
+        const commenter = pick(followers).followerId;
+        await db.comment.create({
+          data: { activityId: activity.id, userId: commenter, body: pick(COMMENT_BODIES) },
+        });
+      }
+    }
+  }
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let totalActivities = 0;
+  const createdUsers: { id: string }[] = [];
 
   for (const u of demoUsers) {
     const user = await db.user.upsert({
@@ -277,11 +320,17 @@ async function main() {
         passwordHash,
       },
     });
+    createdUsers.push(user);
 
     const existing = await db.activity.count({ where: { userId: user.id } });
     if (existing === 0) {
       totalActivities += await seedActivitiesForUser(user, u.home, u.weeklyActivities);
     }
+  }
+
+  const followCount = await db.follow.count();
+  if (followCount === 0) {
+    await seedSocialGraph(createdUsers);
   }
 
   console.log(`Seeded ${demoUsers.length} demo users with ${totalActivities} activities. Password for all: ${DEMO_PASSWORD}`);

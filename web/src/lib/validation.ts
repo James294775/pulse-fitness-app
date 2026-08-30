@@ -63,6 +63,12 @@ export const editActivitySchema = z.object({
   privacy: z.enum(activityPrivacyValues),
 });
 
+export const commentSchema = z.object({
+  activityId: z.string().min(1),
+  parentId: z.string().optional().or(z.literal("")),
+  body: z.string().trim().min(1, "Say something first").max(1000),
+});
+
 export const profileSchema = z.object({
   displayName: z.string().trim().min(1, "Enter your name").max(80),
   bio: z.string().trim().max(500).optional().or(z.literal("")),
