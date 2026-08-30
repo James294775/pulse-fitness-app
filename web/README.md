@@ -2,7 +2,7 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 6 of 8 (Training dashboard).** Everything from Phase 5, plus: weekly/monthly totals per sport with prior-period comparison, a 13-week training-log calendar (shaded relative to each athlete's own training volume), a real CTL/ATL/TSB fitness-and-form chart, personal records (race distances + longest ride/biggest climb), and recurring weekly/monthly goals with progress bars. See `../PLAN.md` for the phase list.
+**Status: Phase 7 of 8 (Clubs & challenges).** Everything from Phase 6, plus: create/join clubs, a monthly club leaderboard scoped to the club's sport, and challenges (target metric, join button, live participant leaderboard) that inherit their club's sport scoping — see `../DECISIONS.md` for a real cross-sport leaderboard bug this closed. See `../PLAN.md` for the phase list.
 
 ## Stack
 

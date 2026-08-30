@@ -68,6 +68,14 @@ Judgment calls made while building, per phase, so they're visible rather than bu
 - **Caught and fixed a real narrow-viewport layout bug while testing**: the "this week"/"this month" cards' three mini-stats (time/elevation/sessions) used `flex` with a fixed gap, which measurably overflowed its container at 390px width (confirmed via `scrollWidth` vs `clientWidth`, not just eyeballing). Switched to a `grid grid-cols-3` layout with `min-w-0`/`truncate` on each cell, which degrades to an ellipsis on genuinely-too-long values instead of pushing the layout wide. Worth remembering for any other multi-stat row: `flex` + `gap` doesn't shrink below content size on its own, `grid-cols-N` does.
 - **Dashboard is the more natural home for "my saved routes" than the feed** (flagged in Phase 5) — not moved yet, since the feed placement still works; worth revisiting if the feed gets crowded.
 
+## Phase 7 — Clubs & challenges
+
+- **Challenges belong to a club** (created from within a club page) rather than also supporting freestanding challenges, even though the schema's `clubId` is nullable. Keeps "clubs and challenges" as one cohesive feature area per the brief's phase grouping instead of two half-built ones; a standalone challenges directory is a reasonable follow-up if it's ever wanted.
+- **Found and fixed a real scoping bug while testing**: a "100km of running" challenge in a running club was actually summing *every* participant's total distance across all sports — a cyclist member showed 392mi against a 62mi target because his rides counted too. `Challenge` had no sport field at all. Added `sportType` to the model (migration `add-challenge-sport`), inherited automatically from the club's sport when a challenge is created (no extra form field needed — a challenge belongs to its club's context), and threaded through `getChallengeLeaderboard`'s activity query. Confirmed by screenshot before/after: the same cyclist correctly shows 0mi once the challenge only counts runs.
+- **Club leaderboard is scoped to the club's sport the same way**, and was designed that way from the start (`getClubLeaderboard` in `src/lib/clubs.ts`) — the challenge gap above was specifically that *challenges* hadn't inherited the same scoping the club leaderboard already had.
+- **Club/challenge leaderboards show distance in the *viewer's* unit preference**, same convention as every other leaderboard in the app — not the club's or other members' preferences. A club with mixed metric/imperial members will show everyone's distance in whichever unit the person looking at the page uses.
+- **The club owner can't leave their own club** (`toggleClubMembershipAction` rejects it) — there's no ownership-transfer or club-deletion flow yet, so an ownerless club would be an orphaned dead end. Flagged, not solved.
+
 ## Later phases
 
 Appended here as they happen — see phase commits for the paired code changes.

@@ -432,10 +432,52 @@ async function seedGoals(users: { id: string }[]) {
   return count;
 }
 
+async function seedClubs(users: { id: string; displayName: string }[]) {
+  if ((await db.club.count()) > 0) return 0;
+
+  const byName = new Map(users.map((u) => [u.displayName, u]));
+  const founder = byName.get("Sana Okoro") ?? users[0];
+  const members = users.filter((u) => u.id !== founder.id).slice(0, 4);
+
+  const club = await db.club.create({
+    data: {
+      name: "Coastal Racing Team",
+      description: "Vancouver-based, mostly road and trail. All paces welcome.",
+      sportType: "run",
+      createdByUserId: founder.id,
+      members: {
+        create: [{ userId: founder.id, role: "owner" }, ...members.map((m) => ({ userId: m.id }))],
+      },
+    },
+  });
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const challengeParticipants = [founder, ...members.slice(0, 3)];
+
+  await db.challenge.create({
+    data: {
+      clubId: club.id,
+      name: `${monthStart.toLocaleString("en-US", { month: "long" })} 100km`,
+      description: "100km of running this month, any pace.",
+      sportType: club.sportType,
+      metric: "distance",
+      targetValue: 100_000,
+      startDate: monthStart,
+      endDate: monthEnd,
+      createdByUserId: founder.id,
+      participants: { create: challengeParticipants.map((p) => ({ userId: p.id })) },
+    },
+  });
+
+  return 1;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let totalActivities = 0;
-  const createdUsers: { id: string }[] = [];
+  const createdUsers: { id: string; displayName: string }[] = [];
 
   for (const u of demoUsers) {
     const user = await db.user.upsert({
@@ -467,11 +509,14 @@ async function main() {
   const segmentCount = await seedSegments();
   const routeCount = await seedRoutes(createdUsers);
   const goalCount = await seedGoals(createdUsers);
+  const clubCount = await seedClubs(createdUsers);
 
   console.log(
     `Seeded ${demoUsers.length} demo users with ${totalActivities} activities${
       segmentCount ? `, ${segmentCount} segments` : ""
-    }${routeCount ? `, ${routeCount} routes` : ""}${goalCount ? `, ${goalCount} goals` : ""}. Password for all: ${DEMO_PASSWORD}`
+    }${routeCount ? `, ${routeCount} routes` : ""}${goalCount ? `, ${goalCount} goals` : ""}${
+      clubCount ? `, ${clubCount} club` : ""
+    }. Password for all: ${DEMO_PASSWORD}`
   );
 }
 

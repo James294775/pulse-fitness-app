@@ -63,6 +63,27 @@ export const editActivitySchema = z.object({
   privacy: z.enum(activityPrivacyValues),
 });
 
+export const createClubSchema = z.object({
+  name: z.string().trim().min(1, "Name this club").max(120),
+  description: z.string().trim().max(1000).optional().or(z.literal("")),
+  sportType: z.union([z.enum(sportTypes), z.literal("")]).optional(),
+});
+
+export const createChallengeSchema = z
+  .object({
+    clubId: z.string().min(1),
+    name: z.string().trim().min(1, "Name this challenge").max(120),
+    description: z.string().trim().max(1000).optional().or(z.literal("")),
+    metric: z.enum(["distance", "time", "elevation"]),
+    targetValue: z.coerce.number().positive("Target must be greater than 0"),
+    startDate: z.string().min(1, "Pick a start date"),
+    endDate: z.string().min(1, "Pick an end date"),
+  })
+  .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
+    message: "End date must be after the start date",
+    path: ["endDate"],
+  });
+
 export const createGoalSchema = z.object({
   sportType: z.union([z.enum(sportTypes), z.literal("")]).optional(),
   period: z.enum(["weekly", "monthly"]),

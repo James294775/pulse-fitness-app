@@ -292,6 +292,7 @@ model Challenge {
   clubId          String?
   name            String
   description     String?
+  sportType       SportType?
   metric          ChallengeMetric
   targetValue     Float
   startDate       DateTime
