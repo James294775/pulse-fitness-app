@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import { db } from "../src/lib/db";
 import { createActivityFromTrack, createManualActivity } from "../src/lib/activities";
 import { createSegmentFromActivity } from "../src/lib/segments";
+import { elevationGainFromTrack } from "../src/lib/geo";
 import { parseTrack } from "../src/lib/track";
 import type { RawPoint } from "../src/lib/track";
 import type { SportType, Units } from "../src/generated/prisma/client";
@@ -369,6 +370,39 @@ async function seedSegments() {
   return segmentCount;
 }
 
+const ROUTE_NAMES = ["Seawall Loop", "Sunset Out-and-Back", "Long Way Home"];
+
+/** Saves one user's own tracked-activity route as a planned Route, so /routes isn't empty on first login. Real elevation gain (the actual track has it); a hand-drawn route would be 0 per the no-elevation-API decision in DECISIONS.md. */
+async function seedRoutes(users: { id: string }[]) {
+  if ((await db.route.count()) > 0) return 0;
+
+  let count = 0;
+  for (const user of users) {
+    const tracked = await db.activity.findFirst({
+      where: { userId: user.id, NOT: { points: "[]" } },
+      orderBy: { startedAt: "desc" },
+    });
+    if (!tracked) continue;
+
+    const track = parseTrack(tracked.points);
+    const distanceM = track[track.length - 1]?.distM ?? 0;
+    if (distanceM < 100) continue;
+
+    await db.route.create({
+      data: {
+        userId: user.id,
+        name: pick(ROUTE_NAMES),
+        points: tracked.points,
+        distanceM,
+        elevationGainM: elevationGainFromTrack(track),
+        starred: Math.random() < 0.4,
+      },
+    });
+    count++;
+  }
+  return count;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let totalActivities = 0;
@@ -402,11 +436,12 @@ async function main() {
   }
 
   const segmentCount = await seedSegments();
+  const routeCount = await seedRoutes(createdUsers);
 
   console.log(
     `Seeded ${demoUsers.length} demo users with ${totalActivities} activities${
-      segmentCount ? ` and ${segmentCount} segments` : ""
-    }. Password for all: ${DEMO_PASSWORD}`
+      segmentCount ? `, ${segmentCount} segments` : ""
+    }${routeCount ? `, ${routeCount} routes` : ""}. Password for all: ${DEMO_PASSWORD}`
   );
 }
 

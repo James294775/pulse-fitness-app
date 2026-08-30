@@ -54,7 +54,9 @@ export function ActivityMap({
       container: containerRef.current,
       style: MAP_STYLE,
       interactive: !live,
-      attributionControl: false,
+      // OpenFreeMap attribution left on by default (MapLibre's normal
+      // behavior) — not verified against their terms whether it can be
+      // safely omitted, so left showing rather than assuming it's fine.
     });
     mapRef.current = map;
 

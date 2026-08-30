@@ -2,7 +2,7 @@
 
 A fitness activity tracker with social features. See `../PLAN.md` for the full build plan, `../DECISIONS.md` for judgment calls made along the way, and `../ROADMAP.md` for what's explicitly out of scope.
 
-**Status: Phase 4 of 8 (Segments).** Everything from Phase 3, plus: create a segment from a stretch of your own tracked activity, automatic matching against future GPS-tracked activities (documented approximate algorithm — see `../DECISIONS.md`), a segment leaderboard (all-time/this-year, crowned #1, your own rank pinned), and matched segments with PR comparison on the activity detail page. The Explore tab is now a real segment directory. See `../PLAN.md` for the phase list.
+**Status: Phase 5 of 8 (Routes).** Everything from Phase 4, plus: a click-to-add-waypoint route builder on the map, save/name/star/delete, a saved-routes list, and GPX export. Hand-drawn routes report 0m elevation gain (no elevation API wired up — see `../DECISIONS.md`); routes saved from a real tracked activity's points do have real elevation. See `../PLAN.md` for the phase list.
 
 ## Stack
 

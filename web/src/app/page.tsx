@@ -55,19 +55,27 @@ export default async function FeedPage() {
   return (
     <AppShell>
       <AppHeader user={toPublicUser(user)} />
+      <div className="flex gap-2.5 border-b border-border px-5 py-3.5">
+        <Link
+          href="/activities/new"
+          className="flex-1 rounded border border-border-strong py-2.5 text-center text-[11px] font-bold tracking-[0.1em] text-tertiary"
+        >
+          + LOG AN ACTIVITY
+        </Link>
+        <Link
+          href="/routes"
+          className="flex-1 rounded border border-border-strong py-2.5 text-center text-[11px] font-bold tracking-[0.1em] text-tertiary"
+        >
+          ROUTES
+        </Link>
+      </div>
       <div className="flex flex-col">
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+          <div className="flex flex-col items-center gap-2 px-8 py-16 text-center">
             <p className="text-sm font-semibold tracking-[0.1em] text-secondary">YOUR FEED IS QUIET</p>
             <p className="max-w-[260px] text-sm text-tertiary">
               Follow other athletes from their profile to see their activities here, or log your own.
             </p>
-            <Link
-              href="/activities/new"
-              className="mt-2 rounded border border-border-strong px-4 py-2.5 text-xs font-bold tracking-[0.1em] text-tertiary"
-            >
-              + LOG AN ACTIVITY
-            </Link>
           </div>
         ) : (
           cards.map((c) => <FeedCard key={c.id} activity={c} units={user.units} />)
