@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { canViewActivity } from "@/lib/social";
 
 export type LeaderboardRange = "all-time" | "this-year";
 
@@ -37,11 +36,23 @@ export async function getSegmentLeaderboard(
     orderBy: { elapsedSec: "asc" },
   });
 
-  const visible = (
-    await Promise.all(
-      efforts.map(async (e) => ((await canViewActivity(e.activity, viewerId)) ? e : null))
-    )
-  ).filter((e): e is NonNullable<typeof e> => e !== null);
+  // Same visibility rule as canViewActivity (src/lib/social.ts), but
+  // batched: one query for who the viewer follows, checked in memory per
+  // effort, instead of one Follow lookup per "followers"-privacy effort --
+  // real cost on a segment with many efforts on a network-backed database.
+  const followingRows = await db.follow.findMany({
+    where: { followerId: viewerId },
+    select: { followingId: true },
+  });
+  const following = new Set(followingRows.map((f) => f.followingId));
+
+  const visible = efforts.filter((e) => {
+    const activity = e.activity;
+    if (activity.userId === viewerId) return true;
+    if (activity.privacy === "everyone") return true;
+    if (activity.privacy === "only_me") return false;
+    return following.has(activity.userId);
+  });
 
   const bestPerUser = new Map<string, (typeof visible)[number]>();
   for (const effort of visible) {

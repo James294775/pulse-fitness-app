@@ -19,31 +19,30 @@ export async function getClubLeaderboard(clubId: string, sportType: SportType | 
     include: { user: { select: { id: true, displayName: true } } },
   });
 
-  const rows = await Promise.all(
-    members.map(async (m) => {
-      const agg = await db.activity.aggregate({
-        where: {
-          userId: m.userId,
-          startedAt: { gte: monthStart, lt: monthEnd },
-          ...(sportType ? { sportType } : {}),
-        },
-        _sum: { distanceM: true },
-      });
-      return { userId: m.userId, displayName: m.user.displayName, value: agg._sum.distanceM ?? 0 };
-    })
-  );
+  // One grouped query for every member's total, instead of one aggregate
+  // query per member (an N+1 that meaningfully slows down clubs with more
+  // than a couple of members on a real network-backed database).
+  const grouped = await db.activity.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: members.map((m) => m.userId) },
+      startedAt: { gte: monthStart, lt: monthEnd },
+      ...(sportType ? { sportType } : {}),
+    },
+    _sum: { distanceM: true },
+  });
+  const totalByUser = new Map(grouped.map((g) => [g.userId, g._sum.distanceM ?? 0]));
 
-  return rows
+  return members
+    .map((m) => ({ userId: m.userId, displayName: m.user.displayName, value: totalByUser.get(m.userId) ?? 0 }))
     .sort((a, b) => b.value - a.value)
     .map((r, i) => ({ rank: i + 1, ...r }));
 }
 
-function metricSum(activities: { distanceM: number; movingTimeSec: number; elevationGainM: number }[], metric: ChallengeMetric) {
-  return activities.reduce((sum, a) => {
-    if (metric === "distance") return sum + a.distanceM;
-    if (metric === "time") return sum + a.movingTimeSec;
-    return sum + a.elevationGainM;
-  }, 0);
+function metricValue(sums: { distanceM: number | null; movingTimeSec: number | null; elevationGainM: number | null }, metric: ChallengeMetric) {
+  if (metric === "distance") return sums.distanceM ?? 0;
+  if (metric === "time") return sums.movingTimeSec ?? 0;
+  return sums.elevationGainM ?? 0;
 }
 
 export interface ChallengeRow extends RankedMember {
@@ -60,22 +59,27 @@ export async function getChallengeLeaderboard(challengeId: string): Promise<Chal
     include: { user: { select: { id: true, displayName: true } } },
   });
 
-  const rows = await Promise.all(
-    participants.map(async (p) => {
-      const activities = await db.activity.findMany({
-        where: {
-          userId: p.userId,
-          startedAt: { gte: challenge.startDate, lt: challenge.endDate },
-          ...(challenge.sportType ? { sportType: challenge.sportType } : {}),
-        },
-        select: { distanceM: true, movingTimeSec: true, elevationGainM: true },
-      });
-      const value = metricSum(activities, challenge.metric);
-      return { userId: p.userId, displayName: p.user.displayName, value };
-    })
-  );
+  // One grouped query for every participant's totals, instead of one
+  // findMany per participant (an N+1 that meaningfully slows down
+  // challenges with more than a couple of participants on a real
+  // network-backed database).
+  const grouped = await db.activity.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: participants.map((p) => p.userId) },
+      startedAt: { gte: challenge.startDate, lt: challenge.endDate },
+      ...(challenge.sportType ? { sportType: challenge.sportType } : {}),
+    },
+    _sum: { distanceM: true, movingTimeSec: true, elevationGainM: true },
+  });
+  const sumsByUser = new Map(grouped.map((g) => [g.userId, g._sum]));
 
-  return rows
+  return participants
+    .map((p) => ({
+      userId: p.userId,
+      displayName: p.user.displayName,
+      value: metricValue(sumsByUser.get(p.userId) ?? { distanceM: 0, movingTimeSec: 0, elevationGainM: 0 }, challenge.metric),
+    }))
     .sort((a, b) => b.value - a.value)
     .map((r, i) => ({ rank: i + 1, ...r, progressPct: Math.min(100, (r.value / challenge.targetValue) * 100) }));
 }
