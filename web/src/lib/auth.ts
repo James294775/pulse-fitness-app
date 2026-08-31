@@ -122,9 +122,14 @@ export function toPublicUser({ passwordHash, ...publicUser }: User): PublicUser 
   return publicUser;
 }
 
-/** For Server Components/pages: redirects to /login instead of throwing. */
+/**
+ * For Server Components/pages: redirects to /login instead of throwing.
+ * On the demo Vercel deploy, redirects to /demo-login instead, which
+ * transparently logs the visitor in as a seeded account -- see
+ * src/app/demo-login/route.ts. No-op change everywhere else.
+ */
 export async function requireUserOrRedirect(): Promise<User> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(process.env.VERCEL ? "/demo-login" : "/login");
   return user;
 }
