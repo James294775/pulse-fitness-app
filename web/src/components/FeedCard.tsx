@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toggleKudosAction } from "@/lib/actions/social-actions";
 import { sportLabels } from "@/lib/validation";
 import { formatDistance, formatDuration, formatPace, formatSpeed, isPaceSport, type Units } from "@/lib/units";
@@ -42,10 +43,12 @@ function relativeTime(iso: string) {
 }
 
 export function FeedCard({ activity, units }: { activity: FeedCardData; units: Units }) {
+  const router = useRouter();
   const [kudosGiven, setKudosGiven] = useState(activity.kudosGiven);
   const [kudosCount, setKudosCount] = useState(activity.kudosCount);
   const [pending, setPending] = useState(false);
   const pace = isPaceSport(activity.sportType);
+  const activityHref = `/activities/${activity.id}`;
 
   async function handleKudos() {
     if (pending) return;
@@ -63,7 +66,22 @@ export function FeedCard({ activity, units }: { activity: FeedCardData; units: U
 
   return (
     <div className="border-b border-border">
-      <Link href={`/activities/${activity.id}`} className="block px-5 pt-4">
+      {/* A plain div, not a nested Link -- it wraps the athlete-profile Link
+          below, and <a> can't contain <a> (invalid HTML, causes a real
+          hydration mismatch). role="link" + a key handler keep it keyboard
+          accessible without that nesting. */}
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(activityHref)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(activityHref);
+          }
+        }}
+        className="block cursor-pointer px-5 pt-4"
+      >
         <div className="flex items-center gap-2.5">
           <Link
             href={`/athletes/${activity.athlete.id}`}
@@ -114,7 +132,7 @@ export function FeedCard({ activity, units }: { activity: FeedCardData; units: U
             </div>
           </div>
         </div>
-      </Link>
+      </div>
 
       <div className="mt-3 flex items-center gap-5 px-5 pb-4">
         <button

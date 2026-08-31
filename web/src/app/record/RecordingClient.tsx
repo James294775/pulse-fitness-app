@@ -4,13 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActivityMap } from "@/components/ActivityMap";
 import { createLiveActivityAction } from "@/lib/actions/activity-actions";
-import { buildTrack, computeTrackStats } from "@/lib/geo";
+import { buildTrack, computeTrackStats, haversineMeters } from "@/lib/geo";
 import { formatDuration, formatPace, formatSpeed, isPaceSport } from "@/lib/units";
 import { sportLabels, sportTypes } from "@/lib/validation";
 import type { RawPoint } from "@/lib/track";
 import type { SportType } from "@/generated/prisma/client";
 
 type Status = "idle" | "recording" | "paused" | "finishing";
+
+// Phone GPS commonly jitters 3-10m even standing still, which would
+// otherwise get summed into "distance traveled" on every watchPosition
+// tick. Reject a new point if the implied speed from the last accepted
+// point is below the app's existing "moving" threshold (the same 0.5 m/s
+// convention computeTrackStats already uses for moving time) -- keeps the
+// live counter flat while genuinely stationary, without touching the
+// shared geo.ts math every other activity type relies on.
+const STATIONARY_SPEED_MPS = 0.5;
 
 export function RecordingClient({ defaultSport }: { defaultSport: SportType }) {
   const router = useRouter();
@@ -40,18 +49,24 @@ export function RecordingClient({ defaultSport }: { defaultSport: SportType }) {
     }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setPoints((prev) => [
-          ...prev,
-          {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            // Altitude is frequently unavailable from the Geolocation API
-            // (no barometric sensor / desktop browsers) — falls back to 0,
-            // which understates elevation gain for those recordings.
-            ele: pos.coords.altitude ?? 0,
-            t: pos.timestamp,
-          },
-        ]);
+        const point: RawPoint = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          // Altitude is frequently unavailable from the Geolocation API
+          // (no barometric sensor / desktop browsers) — falls back to 0,
+          // which understates elevation gain for those recordings.
+          ele: pos.coords.altitude ?? 0,
+          t: pos.timestamp,
+        };
+        setPoints((prev) => {
+          const last = prev[prev.length - 1];
+          if (last) {
+            const dtSec = (point.t - last.t) / 1000;
+            const dM = haversineMeters(last, point);
+            if (dtSec > 0 && dM / dtSec < STATIONARY_SPEED_MPS) return prev;
+          }
+          return [...prev, point];
+        });
       },
       (err) => setGeoError(err.message),
       { enableHighAccuracy: true, maximumAge: 1000 }
@@ -133,18 +148,18 @@ export function RecordingClient({ defaultSport }: { defaultSport: SportType }) {
       </div>
 
       {status === "idle" && (
-        <div className="relative mx-5 flex overflow-hidden rounded border border-border">
-          {sportTypes.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSportType(s)}
-              className={`flex-1 py-2.5 text-[11px] font-semibold tracking-[0.1em] ${
-                s === sportType ? "bg-accent text-accent-ink" : "bg-surface text-secondary"
-              }`}
-            >
-              {sportLabels[s].toUpperCase()}
-            </button>
-          ))}
+        <div className="relative mx-5">
+          <select
+            value={sportType}
+            onChange={(e) => setSportType(e.target.value as SportType)}
+            className="w-full rounded border border-border-strong bg-surface px-3.5 py-2.5 text-[13px] font-semibold tracking-[0.06em] text-text outline-none focus:border-accent"
+          >
+            {sportTypes.map((s) => (
+              <option key={s} value={s}>
+                {sportLabels[s].toUpperCase()}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 

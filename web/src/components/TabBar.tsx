@@ -27,11 +27,11 @@ export function TabBar() {
         const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
         if (href === "/record") {
           return (
-            <Link key={href} href={href} className="flex flex-col items-center gap-1.5 py-1">
-              <span className="flex h-[34px] w-[46px] items-center justify-center rounded-[5px] bg-accent text-accent-ink">
-                <Icon />
+            <Link key={href} href={href} className="flex flex-col items-center gap-1 py-1">
+              <span className="flex h-[28px] w-[38px] items-center justify-center rounded-[5px] bg-accent text-accent-ink">
+                <Icon size={17} />
               </span>
-              <span className="text-[9.5px] font-semibold tracking-[0.1em] text-accent">
+              <span className="text-[9px] font-semibold tracking-[0.1em] text-accent">
                 {label}
               </span>
             </Link>
@@ -41,12 +41,12 @@ export function TabBar() {
           <Link
             key={href}
             href={href}
-            className={`flex flex-col items-center gap-1.5 py-1 ${
+            className={`flex flex-col items-center gap-1 py-1 ${
               isActive ? "text-text" : "text-secondary"
             }`}
           >
-            <Icon />
-            <span className="text-[9.5px] font-semibold tracking-[0.1em]">{label}</span>
+            <Icon size={19} />
+            <span className="text-[9px] font-semibold tracking-[0.1em]">{label}</span>
           </Link>
         );
       })}

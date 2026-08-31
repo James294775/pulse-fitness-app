@@ -11,9 +11,20 @@ const labelClass = "text-[11px] font-semibold tracking-[0.1em] text-secondary";
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
+/**
+ * Defaults the challenge to run through the end of the current month --
+ * except on the last day of the month itself, when that would collapse
+ * to the same day as the start date and fail the "end must be after
+ * start" validation. Rolls to the end of next month in that case instead
+ * of leaving the default start/end pair invalid on submit.
+ */
 function endOfMonthStr() {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  if (end.toISOString().slice(0, 10) === todayStr()) {
+    return new Date(d.getFullYear(), d.getMonth() + 2, 0).toISOString().slice(0, 10);
+  }
+  return end.toISOString().slice(0, 10);
 }
 
 export function NewChallengeForm({ clubId, units }: { clubId: string; units: Units }) {
