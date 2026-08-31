@@ -6,17 +6,19 @@ A fitness activity tracker with social features. See `../PLAN.md` for the full b
 
 ## Stack
 
-Next.js (App Router) + TypeScript + Tailwind CSS v4, Prisma + SQLite (dev), hand-rolled email/password auth with DB-backed sessions, MapLibre GL (OpenFreeMap tiles) for maps, Recharts for elevation/pace charts.
+Next.js (App Router) + TypeScript + Tailwind CSS v4, Prisma + Postgres, hand-rolled email/password auth with DB-backed sessions, MapLibre GL (OpenFreeMap tiles) for maps, Recharts for elevation/pace charts.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env
-npx prisma migrate dev
+cp .env.example .env   # then set DATABASE_URL to your own Postgres connection string
+npx prisma migrate deploy
 npx prisma db seed
 npm run dev
 ```
+
+A free [Prisma Postgres](https://console.prisma.io) database works well here — create a project, copy the *direct* connection string (not the pooled/Accelerate one) into `.env`. Any other Postgres works too.
 
 Then visit `http://localhost:3000`. Log in as any seeded user (see below) — there's no public account list in the UI, these are for local dev.
 
@@ -37,7 +39,7 @@ Password for all of them: `password123`. Each has ~3 months of seeded activity h
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | SQLite file path locally (`file:./dev.db`); a Postgres/libSQL connection string in production — see Deploying below. |
+| `DATABASE_URL` | A Postgres connection string — the same variable locally and in production. |
 
 ## Scripts
 
@@ -46,8 +48,9 @@ Password for all of them: `password123`. Each has ~3 months of seeded activity h
 - `npm run test` — unit tests (Vitest) for the tricky logic: GPX/TCX parsing, segment matching, pace/elevation/unit conversions, privacy-zone clipping. No UI/component tests, by design — see `../PLAN.md`.
 - `npm run lint` — ESLint
 - `npx prisma migrate dev --name <name>` — create + apply a migration after editing `prisma/schema.prisma`
+- `npx prisma migrate deploy` — apply pending migrations without creating a new one (CI/CD, first-time setup)
 - `npx prisma db seed` — re-run the seed script (upserts, safe to re-run)
-- `npx prisma studio` — browse the local database
+- `npx prisma studio` — browse the database
 
 ## Privacy
 
@@ -56,10 +59,11 @@ Password for all of them: `password123`. Each has ~3 months of seeded activity h
 
 ## Deploying
 
-Two things don't survive as-is on Vercel, both flagged in `../DECISIONS.md` / `../ROADMAP.md`:
+Set `DATABASE_URL` as a project environment variable on Vercel (a Prisma Postgres connection string, or any other Postgres). `vercel.json`'s `buildCommand` runs `prisma generate && prisma migrate deploy && prisma db seed` before `next build`, so the schema and demo data are set up automatically on every deploy — no manual migration step needed.
 
-1. **Database.** SQLite has no durable storage on Vercel's serverless filesystem. Point `DATABASE_URL` at a hosted Postgres (Vercel Postgres, Neon, etc.) or libSQL/Turso instead, and swap the `datasource.provider` in `prisma/schema.prisma` accordingly (the schema avoids SQLite-only features specifically so this swap is small). You'll also need the matching Prisma driver adapter (e.g. `@prisma/adapter-pg` for Postgres) in `src/lib/db.ts` in place of `@prisma/adapter-better-sqlite3` — Prisma 7 requires an explicit adapter, it doesn't infer one from the connection string.
-2. **Photo uploads** (from Phase 2 onward) write to `public/uploads/` — also not durable on Vercel. Needs S3-compatible object storage before a real deploy holds user photos.
+One thing that doesn't survive as-is on Vercel, flagged in `../ROADMAP.md`: **photo uploads** (from Phase 2 onward) write to `public/uploads/`, which isn't durable on Vercel's serverless filesystem. Needs S3-compatible object storage before a real deploy holds user photos.
+
+`requireUserOrRedirect()` in `src/lib/auth.ts` sends unauthenticated visitors to `/demo-login` instead of `/login` whenever `process.env.VERCEL` is set (Vercel sets this automatically), which transparently logs them in as the seeded `jonas@example.com` account — a deliberate choice for a public demo link, not something a real deploy with real user accounts would want. `/login`/`/signup` still work normally if you want to switch accounts.
 
 ## Notes for anyone touching auth or user data
 

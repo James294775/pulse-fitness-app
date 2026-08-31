@@ -1,7 +1,8 @@
 // Pulse — Prisma schema
-// SQLite for local dev; kept Postgres-compatible (real enums, no SQLite-only
-// features) so swapping `datasource.provider` + DATABASE_URL is the only
-// change needed later. See README.md "Deploying" section.
+// Postgres (Prisma Postgres). Was SQLite through Phase 8; swapped once a
+// real deploy needed real persistence — see DECISIONS.md. Was already kept
+// Postgres-compatible from the start (real enums, no SQLite-only features),
+// so this was just the datasource + adapter swap that was always planned.
 
 generator client {
   provider = "prisma-client"
@@ -9,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum SportType {
@@ -64,8 +65,8 @@ enum ClubRole {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   displayName  String
   avatarUrl    String?
@@ -80,8 +81,8 @@ model User {
   photos            Photo[]
   kudos             Kudos[]
   comments          Comment[]
-  followedBy        Follow[]        @relation("followingRelation")
-  following         Follow[]        @relation("followerRelation")
+  followedBy        Follow[]               @relation("followingRelation")
+  following         Follow[]               @relation("followerRelation")
   segmentsCreated   Segment[]
   segmentEfforts    SegmentEffort[]
   routes            Route[]
@@ -106,27 +107,27 @@ model Session {
 }
 
 model Activity {
-  id               String           @id @default(cuid())
-  userId           String
-  sportType        SportType
-  title            String
-  description      String?
-  privacy          ActivityPrivacy  @default(everyone)
-  source           ActivitySource
-  startedAt        DateTime
-  elapsedTimeSec   Int
-  movingTimeSec    Int
-  distanceM        Float
-  elevationGainM   Float
-  avgPaceSecPerKm  Float?
-  avgSpeedKmh      Float?
-  calories         Int?
-  effortScore      Float
-  points           String // JSON: TrackPoint[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String          @id @default(cuid())
+  userId          String
+  sportType       SportType
+  title           String
+  description     String?
+  privacy         ActivityPrivacy @default(everyone)
+  source          ActivitySource
+  startedAt       DateTime
+  elapsedTimeSec  Int
+  movingTimeSec   Int
+  distanceM       Float
+  elevationGainM  Float
+  avgPaceSecPerKm Float?
+  avgSpeedKmh     Float?
+  calories        Int?
+  effortScore     Float
+  points          String // JSON: TrackPoint[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos          Photo[]
   kudos           Kudos[]
   comments        Comment[]
@@ -137,7 +138,7 @@ model Activity {
 }
 
 model Photo {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   activityId String
   userId     String
   url        String
@@ -192,20 +193,20 @@ model Comment {
 }
 
 model Segment {
-  id                String    @id @default(cuid())
-  name              String
-  sportType         SportType
-  createdByUserId   String
-  sourceActivityId  String?
-  points            String // JSON: TrackPoint[]
-  startLat          Float
-  startLng          Float
-  endLat            Float
-  endLng            Float
-  distanceM         Float
-  elevationGainM    Float
-  avgGrade          Float
-  createdAt         DateTime @default(now())
+  id               String    @id @default(cuid())
+  name             String
+  sportType        SportType
+  createdByUserId  String
+  sourceActivityId String?
+  points           String // JSON: TrackPoint[]
+  startLat         Float
+  startLng         Float
+  endLat           Float
+  endLng           Float
+  distanceM        Float
+  elevationGainM   Float
+  avgGrade         Float
+  createdAt        DateTime  @default(now())
 
   createdBy      User            @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   sourceActivity Activity?       @relation(fields: [sourceActivityId], references: [id], onDelete: SetNull)
@@ -263,16 +264,16 @@ model Goal {
 }
 
 model Club {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   name            String
   description     String?
   sportType       SportType?
   createdByUserId String
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime   @default(now())
 
-  createdBy   User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  members     ClubMember[]
-  challenges  Challenge[]
+  createdBy  User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members    ClubMember[]
+  challenges Challenge[]
 }
 
 model ClubMember {
